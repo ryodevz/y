@@ -14,7 +14,32 @@ ICACLS C:\Windows\Temp /grant administrator:F >nul
 ICACLS C:\Windows\installer /grant administrator:F >nul
 echo Successfully Installed !, If the RDP is Dead, Please Rebuild Again!
 echo IP:
-tasklist | find /i "ngrok.exe" >Nul && curl -s localhost:4040/api/tunnels | jq -r .tunnels[0].public_url || echo "Unable to get the NGROK tunnel, make sure NGROK_AUTH_TOKEN correct in Settings> Secrets> Repository secret. Maybe your previous VM is still running: https://dashboard.ngrok.com/status/tunnels "
+@echo off
+
+:: Cek apakah ngrok.exe sedang berjalan
+tasklist | find /i "ngrok.exe" > Nul
+if %errorlevel%==0 (
+    echo Ngrok is running.
+    
+    :: Ambil data tunnel dari API lokal ngrok
+    curl -s http://localhost:4040/api/tunnels > ngrok_output.txt
+    echo Tunnel data retrieved:
+    type ngrok_output.txt
+
+    :: Cek apakah data JSON dari curl ada dan valid
+    for /f "delims=" %%A in ('jq -r .tunnels[0].public_url ngrok_output.txt') do set "tunnel_url=%%A"
+    
+    if defined tunnel_url (
+        echo Tunnel URL: %tunnel_url%
+    ) else (
+        echo "Failed to parse the tunnel URL. Ensure jq is installed and ngrok is configured correctly."
+    )
+) else (
+    echo "Unable to get the NGROK tunnel, make sure NGROK_AUTH_TOKEN is correct in Settings> Secrets> Repository secret."
+    echo "Maybe your previous VM is still running: https://dashboard.ngrok.com/status/tunnels"
+)
+
+
 echo Username: administrator
 echo Password: @Netslutter
 echo Please Login To Your RDP!!
