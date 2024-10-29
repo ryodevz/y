@@ -1,0 +1,38 @@
+name: Ubuntu
+
+on: workflow_dispatch
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Download ngrok
+      run: wget -O ngrok.zip https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.zip
+    - name: Extract ngrok
+      run: unzip ngrok.zip
+    - name: Auth
+      run: ./ngrok authtoken $NGROK_AUTH_TOKEN
+      env:
+        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
+    - name: Set up SSH
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y openssh-server
+        sudo systemctl enable ssh
+        sudo systemctl start ssh
+    - name: Configure SSH User
+      run: |
+        sudo useradd -m -s /bin/bash ryotwell
+        echo "ryotwell:12345678" | sudo chpasswd
+        sudo mkdir -p /home/ryotwell/.ssh
+        sudo chown ryotwell:ryotwell /home/ryotwell/.ssh
+        echo "AllowUsers ryotwell" | sudo tee -a /etc/ssh/sshd_config
+        sudo systemctl restart ssh
+    - name: Open SSH Port in Firewall
+      run: |
+        sudo ufw allow 22
+        sudo ufw --force enable
+    - name: Create SSH Tunnel with ngrok
+      run: ./ngrok tcp 22
